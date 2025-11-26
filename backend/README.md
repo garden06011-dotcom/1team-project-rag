@@ -58,6 +58,17 @@ RAG_MAX_TOKENS=1000
 python index_documents.py
 ```
 
+> **새 문서를 추가했나요?**  
+> `data/documents/` 에 파일을 넣은 뒤에는 **재인덱싱**이 필요합니다.  
+> 아래 두 방법 중 편한 것을 선택하세요.
+>
+> 1. **CLI 실행**: `python index_documents.py` (기존 방식)  
+> 2. **API 호출**: 서버 실행 후 `POST http://localhost:8001/api/rag-reindex`  
+>    ```bash
+>    curl -X POST http://localhost:8001/api/rag-reindex
+>    ```
+>    호출이 끝나면 서버가 자동으로 새 컬렉션을 로드하므로 별도 재시작이 필요 없습니다.
+
 ### 5. 서버 실행
 
 ```bash

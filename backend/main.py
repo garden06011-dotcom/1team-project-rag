@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from typing import Optional, List, Dict, Any
 import os
 import json
+import asyncio
+import sys
 
 # RAG 모듈 import
 from rag.rag_chain import RAGChain
@@ -172,4 +174,51 @@ async def rag_chat_stream(request: ChatRequest):
             "X-Accel-Buffering": "no"
         }
     )
+
+
+# ============================================
+# 문서 재인덱싱 엔드포인트
+# ============================================
+@app.post("/api/rag-reindex")
+async def rag_reindex():
+    """
+    data/documents 폴더를 다시 스캔하고 ChromaDB 색인을 재생성합니다.
+    - CLI로 index_documents.py를 실행한 것과 동일
+    - 성공 시 Lazy RAG 체인을 초기화해 다음 질문부터 새 데이터를 사용
+    """
+    script_path = os.path.join(os.path.dirname(__file__), "index_documents.py")
+    if not os.path.exists(script_path):
+        raise HTTPException(status_code=500, detail="index_documents.py를 찾을 수 없습니다.")
+
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        script_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await process.communicate()
+
+    success = process.returncode == 0
+    output = stdout.decode("utf-8", errors="ignore")
+    errors = stderr.decode("utf-8", errors="ignore")
+
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "문서 재인덱싱 실패",
+                "stdout": output,
+                "stderr": errors,
+            },
+        )
+
+    # 새로운 벡터 스토어를 로드하도록 RAG 체인을 초기화
+    global rag_chain
+    rag_chain = None
+
+    return {
+        "message": "문서 재인덱싱 완료",
+        "stdout": output,
+        "stderr": errors,
+    }
 
